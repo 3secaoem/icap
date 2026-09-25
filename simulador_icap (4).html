@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador do Indicador de Capilarização — CBMMG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --laranja: #F47920;
+    --laranja-esc: #C25C10;
+    --ardosia: #434A4F;
+    --titulo: #1E293B;
+    --texto: #334155;
+    --fraco: #64748B;
+    --fundo: #F0ECE8;
+    --card: #FFFFFF;
+    --linha: #DDE3EA;
+    --creme: #E4DED8;
+    --verde: #15803D;
+    --vermelho: #B91C1C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --titulo: #E8EDF2; --texto: #CBD5E1; --fraco: #94A3B8;
+      --fundo: #15191D; --card: #1E242A; --linha: #2E363D; --creme: #262E35;
+      --ardosia: #C3CBD2; --verde: #4ADE80; --vermelho: #F87171; --laranja-esc: #F9A45E;
+    }
+  }
+  :root[data-theme="dark"] {
+    --titulo: #E8EDF2; --texto: #CBD5E1; --fraco: #94A3B8;
+    --fundo: #15191D; --card: #1E242A; --linha: #2E363D; --creme: #262E35;
+    --ardosia: #C3CBD2; --verde: #4ADE80; --vermelho: #F87171; --laranja-esc: #F9A45E;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--fundo); color: var(--texto);
+    font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 1.5;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 26px 18px 60px; }
+
+  header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px;
+           flex-wrap: wrap; border-bottom: 2px solid var(--laranja); padding-bottom: 14px; margin-bottom: 20px; }
+  h1 { font-family: Play, Arial, sans-serif; font-size: clamp(19px, 3.4vw, 26px);
+       margin: 0 0 3px; color: var(--titulo); line-height: 1.15; }
+  .sub { font-family: Play, Arial, sans-serif; font-size: 13px; color: var(--laranja); margin: 0; }
+
+  button { font-family: inherit; cursor: pointer; }
+  .btn-reset {
+    font-family: Play, Arial, sans-serif; font-size: 13px; font-weight: 700;
+    background: var(--card); color: var(--texto);
+    border: 1px solid var(--linha); border-radius: 6px; padding: 9px 16px;
+  }
+  .btn-reset:hover { border-color: var(--laranja); color: var(--laranja-esc); }
+  .btn-reset:focus-visible { outline: 2px solid var(--laranja); outline-offset: 2px; }
+
+  /* ---- painel de indices ---- */
+  .painel { display: grid; grid-template-columns: 1.55fr 1fr; gap: 14px; margin-bottom: 8px; }
+  @media (max-width: 720px) { .painel { grid-template-columns: 1fr; } }
+
+  .destaque { background: var(--ardosia); border-radius: 10px; padding: 20px 22px; color: #FFFFFF; }
+  :root[data-theme="dark"] .destaque, :root:not([data-theme="light"]) .destaque { background: #2B3239; }
+  .rot-d { font-family: Play, Arial, sans-serif; font-size: 12.5px; color: #F9B57E; margin: 0 0 2px; }
+  .val-d { font-family: Play, Arial, sans-serif; font-size: clamp(42px, 8vw, 58px); font-weight: 700;
+           line-height: 1; color: #FFFFFF; letter-spacing: -1px; }
+  .delta { font-family: Play, Arial, sans-serif; font-size: 14px; font-weight: 700; margin-top: 7px; min-height: 21px; }
+  .subs { display: flex; gap: 26px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.16); flex-wrap: wrap; }
+  .sub-item { font-size: 12.5px; color: #C7D0D8; }
+  .sub-item b { display: block; font-family: Play, Arial, sans-serif; font-size: 20px; color: #FFFFFF; font-weight: 700; }
+
+  .antigo { background: var(--card); border: 1px solid var(--linha); border-radius: 10px; padding: 20px 22px; }
+  .rot-a { font-family: Play, Arial, sans-serif; font-size: 12.5px; color: var(--fraco); margin: 0 0 2px; }
+  .val-a { font-family: Play, Arial, sans-serif; font-size: clamp(30px, 5.5vw, 38px); font-weight: 700;
+           line-height: 1; color: var(--fraco); }
+  .nota-a { font-size: 12.5px; color: var(--fraco); margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--linha); }
+
+  .sobe { color: var(--verde); }
+  .desce { color: var(--vermelho); }
+  .igual { color: var(--fraco); }
+  .destaque .sobe { color: #86EFAC; }
+  .destaque .desce { color: #FCA5A5; }
+  .destaque .igual { color: #9AA6B1; }
+
+  /* ---- faixa de acao ---- */
+  .acao { background: var(--creme); border-radius: 8px; padding: 11px 16px; margin: 12px 0 22px;
+          font-size: 13.5px; color: var(--texto); min-height: 44px; display: flex; align-items: center; gap: 10px; }
+  .acao b { color: var(--titulo); }
+  .pulso { animation: pulso .5s ease; }
+  @keyframes pulso { from { background: #FAD9BC; } to { background: var(--creme); } }
+  @media (prefers-reduced-motion: reduce) { .pulso { animation: none; } }
+
+  /* ---- lista ---- */
+  .barra { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  input[type=search] {
+    font-family: Arial, sans-serif; font-size: 14px; padding: 9px 12px; flex: 1 1 200px;
+    border: 1px solid var(--linha); border-radius: 6px; background: var(--card); color: var(--texto);
+  }
+  input[type=search]:focus-visible { outline: 2px solid var(--laranja); outline-offset: 1px; }
+  .filtros { display: flex; gap: 3px; background: var(--card); border: 1px solid var(--linha);
+             border-radius: 6px; padding: 3px; }
+  .filtro { font-family: Play, Arial, sans-serif; font-size: 12.5px; font-weight: 700;
+            border: none; background: none; color: var(--fraco); padding: 6px 12px; border-radius: 4px; }
+  .filtro[aria-pressed="true"] { background: var(--laranja); color: #FFFFFF; }
+  .filtro:focus-visible { outline: 2px solid var(--laranja); outline-offset: 1px; }
+
+  .lista { background: var(--card); border: 1px solid var(--linha); border-radius: 10px; overflow: hidden; }
+  .tabela { overflow-x: auto; }
+  .interno { min-width: 560px; }
+  .cab, .linha {
+    display: grid; grid-template-columns: 52px minmax(140px, 2.1fr) 1fr 1fr 1fr;
+    align-items: center; gap: 8px; padding: 0 14px;
+  }
+  .cab {
+    background: var(--laranja); color: #FFFFFF; font-family: Play, Arial, sans-serif;
+    font-size: 12px; font-weight: 700; padding-top: 4px; padding-bottom: 4px;
+  }
+  .cab > span, .cab > button { text-align: right; }
+  .cab > span:first-child { text-align: center; }
+  .cab .ord {
+    font: inherit; color: inherit; background: none; border: none;
+    padding: 6px 0; display: flex; align-items: center; gap: 4px; justify-content: flex-end;
+    border-radius: 4px;
+  }
+  .cab .ord.esq { justify-content: flex-start; }
+  .cab .ord:hover { background: rgba(255,255,255,.18); }
+  .cab .ord:focus-visible { outline: 2px solid #FFFFFF; outline-offset: -2px; }
+  .cab .ord .seta { font-size: 9px; opacity: 0; }
+  .cab .ord[aria-sort] .seta { opacity: 1; }
+  .rolagem { max-height: 420px; overflow-y: auto; }
+  .linha { border-top: 1px solid var(--linha); padding-top: 9px; padding-bottom: 9px; font-size: 13.5px; }
+  .linha[hidden] { display: none; }
+  .linha.par { background: color-mix(in srgb, var(--fundo) 45%, var(--card)); }
+  .linha.on { box-shadow: inset 3px 0 0 var(--laranja); }
+  .linha > span { text-align: right; white-space: nowrap; }
+  .linha .chk { text-align: center; }
+  .linha .nome { text-align: left; white-space: normal; color: var(--titulo); font-weight: 700; }
+  .linha.off .nome { color: var(--fraco); font-weight: 400; }
+  .linha .valor { font-weight: 700; color: var(--laranja-esc); }
+  .linha.off .valor { color: var(--fraco); font-weight: 400; }
+  input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--laranja); cursor: pointer; }
+  input[type=checkbox]:focus-visible { outline: 2px solid var(--laranja); outline-offset: 2px; }
+  .vazio { padding: 26px; text-align: center; color: var(--fraco); font-size: 14px; }
+  .rodape-lista { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+                  padding: 11px 15px; border-top: 1px solid var(--linha); font-size: 12.5px; color: var(--fraco); }
+  footer { margin-top: 26px; font-size: 12.5px; color: var(--fraco); line-height: 1.65; }
+  footer b { color: var(--texto); }
+  @media (max-width: 620px) {
+    .cab, .linha { grid-template-columns: 44px minmax(118px, 1.7fr) 1fr 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Simulador do Indicador de Capilarização</h1>
+      <p class="sub">Marque ou desmarque um município para simular a instalação ou a retirada de uma fração</p>
+    </div>
+    <button class="btn-reset" id="reset">Voltar à situação real</button>
+  </header>
+
+  <div class="painel">
+    <div class="destaque">
+      <p class="rot-d">Icap proposto</p>
+      <div class="val-d" id="icapNovo">85,07%</div>
+      <div class="delta" id="deltaNovo">situação real de hoje</div>
+      <div class="subs">
+        <div class="sub-item">População coberta<b id="siPop">87,90%</b></div>
+        <div class="sub-item">Isolamento coberto<b id="siIsol">76,43%</b></div>
+      </div>
+    </div>
+
+    <div class="antigo">
+      <p class="rot-a">Icap atual — Mf ÷ Me</p>
+      <div class="val-a" id="icapVelho">70,77%</div>
+      <div class="delta igual" id="deltaVelho" style="font-size:13px">situação real de hoje</div>
+      <div class="nota-a" id="notaVelho">92 de 130 municípios atendidos</div>
+    </div>
+  </div>
+
+  <div class="acao" id="acao">Nenhuma alteração simulada. O painel mostra a situação real.</div>
+
+  <div class="barra">
+    <input type="search" id="busca" placeholder="Buscar município" aria-label="Buscar município">
+    <div class="filtros">
+      <button class="filtro" data-f="todos" aria-pressed="true">Todos</button>
+      <button class="filtro" data-f="com" aria-pressed="false">Com fração</button>
+      <button class="filtro" data-f="sem" aria-pressed="false">Sem fração</button>
+    </div>
+  </div>
+
+  <div class="lista">
+    <div class="tabela"><div class="interno">
+      <div class="cab">
+        <span>Fração</span>
+        <button class="ord esq" data-c="nome">Município <i class="seta"></i></button>
+        <button class="ord" data-c="pop">População <i class="seta"></i></button>
+        <button class="ord" data-c="isol">Isolamento <i class="seta"></i></button>
+        <button class="ord" data-c="valor">Valor no Icap <i class="seta"></i></button>
+      </div>
+      <div class="rolagem" id="rolagem"></div>
+    </div></div>
+    <div class="vazio" id="vazio" hidden>Nenhum município encontrado.</div>
+    <div class="rodape-lista">
+      <span id="contador"></span>
+      <span>Conjunto de referência fixo em 130 municípios</span>
+    </div>
+  </div>
+
+  <footer>
+    <p><b>Icap proposto</b> = 0,7532 × peso da população + 0,2468 × peso do isolamento, somado para os municípios
+    com fração instalada. O <b>isolamento</b> é a distância até a unidade instalada mais próxima, excluindo a do
+    próprio município — por isso, ao marcar ou desmarcar uma fração, o isolamento dos vizinhos também é recalculado
+    e todos os pesos se redistribuem.</p>
+    <p><b>Icap atual</b> = municípios com fração ÷ municípios do conjunto de referência (92 de 130),
+    mostrado para comparação. Distâncias em linha reta a partir das coordenadas dos municípios; população do Censo 2022.</p>
+  </footer>
+</div>
+
+<script>
+var M = [{"n":"Belo Horizonte","p":2433804,"la":-19.9102,"lo":-43.9266,"e":1,"i":1},{"n":"Uberlândia","p":735266,"la":-18.9141,"lo":-48.2749,"e":1,"i":1},{"n":"Contagem","p":647947,"la":-19.9321,"lo":-44.0539,"e":1,"i":1},{"n":"Juiz de Fora","p":561848,"la":-21.7595,"lo":-43.3398,"e":1,"i":1},{"n":"Montes Claros","p":427807,"la":-16.7282,"lo":-43.8578,"e":1,"i":1},{"n":"Betim","p":424490,"la":-19.9668,"lo":-44.2008,"e":1,"i":1},{"n":"Uberaba","p":346634,"la":-19.7472,"lo":-47.9381,"e":1,"i":1},{"n":"Ribeirão das Neves","p":340034,"la":-19.7621,"lo":-44.0844,"e":1,"i":1},{"n":"Governador Valadares","p":267908,"la":-18.8545,"lo":-41.9555,"e":1,"i":1},{"n":"Divinópolis","p":239237,"la":-20.1446,"lo":-44.8912,"e":1,"i":1},{"n":"Ipatinga","p":237501,"la":-19.4703,"lo":-42.5476,"e":1,"i":1},{"n":"Sete Lagoas","p":235983,"la":-19.4569,"lo":-44.2413,"e":1,"i":1},{"n":"Santa Luzia","p":227025,"la":-19.7548,"lo":-43.8497,"e":1,"i":1},{"n":"Ibirité","p":177063,"la":-20.0252,"lo":-44.0569,"e":1,"i":0},{"n":"Poços de Caldas","p":169635,"la":-21.78,"lo":-46.5692,"e":1,"i":1},{"n":"Patos de Minas","p":164147,"la":-18.5699,"lo":-46.5013,"e":1,"i":1},{"n":"Pouso Alegre","p":156621,"la":-22.2266,"lo":-45.9389,"e":1,"i":1},{"n":"Teófilo Otoni","p":142342,"la":-17.8595,"lo":-41.5087,"e":1,"i":1},{"n":"Varginha","p":140439,"la":-21.5556,"lo":-45.4364,"e":1,"i":1},{"n":"Conselheiro Lafaiete","p":135449,"la":-20.6634,"lo":-43.7846,"e":1,"i":1},{"n":"Sabará","p":134122,"la":-19.884,"lo":-43.8263,"e":1,"i":1},{"n":"Vespasiano","p":132339,"la":-19.6883,"lo":-43.9239,"e":1,"i":1},{"n":"Barbacena","p":129897,"la":-21.2214,"lo":-43.7703,"e":1,"i":1},{"n":"Araguari","p":121589,"la":-18.6456,"lo":-48.1934,"e":1,"i":1},{"n":"Itabira","p":117458,"la":-19.6239,"lo":-43.2312,"e":1,"i":1},{"n":"Passos","p":115546,"la":-20.7193,"lo":-46.609,"e":1,"i":1},{"n":"Araxá","p":114375,"la":-19.5902,"lo":-46.9438,"e":1,"i":1},{"n":"Nova Lima","p":113381,"la":-19.9758,"lo":-43.8509,"e":1,"i":0},{"n":"Coronel Fabriciano","p":108515,"la":-19.5179,"lo":-42.6276,"e":1,"i":1},{"n":"Lavras","p":107801,"la":-21.248,"lo":-45.0009,"e":1,"i":1},{"n":"Muriaé","p":107589,"la":-21.13,"lo":-42.3693,"e":1,"i":1},{"n":"Ubá","p":106820,"la":-21.1204,"lo":-42.9359,"e":1,"i":1},{"n":"Nova Serrana","p":106634,"la":-19.8713,"lo":-44.9847,"e":1,"i":1},{"n":"Ituiutaba","p":105565,"la":-18.9772,"lo":-49.4639,"e":1,"i":1},{"n":"Itaúna","p":100360,"la":-20.0818,"lo":-44.5801,"e":1,"i":1},{"n":"Pará de Minas","p":99749,"la":-19.8534,"lo":-44.6114,"e":1,"i":1},{"n":"Paracatu","p":96742,"la":-17.2252,"lo":-46.8711,"e":1,"i":1},{"n":"Itajubá","p":96260,"la":-22.4225,"lo":-45.4598,"e":1,"i":1},{"n":"Manhuaçu","p":94318,"la":-20.2572,"lo":-42.028,"e":1,"i":1},{"n":"São João del Rei","p":93139,"la":-21.1311,"lo":-44.2526,"e":1,"i":1},{"n":"Patrocínio","p":92550,"la":-18.9379,"lo":-46.9934,"e":1,"i":1},{"n":"Caratinga","p":90359,"la":-19.7868,"lo":-42.1292,"e":1,"i":1},{"n":"Unaí","p":89125,"la":-16.3592,"lo":-46.9022,"e":1,"i":1},{"n":"Esmeraldas","p":86393,"la":-19.764,"lo":-44.3065,"e":1,"i":0},{"n":"Timóteo","p":84156,"la":-19.5811,"lo":-42.6471,"e":1,"i":1},{"n":"Curvelo","p":82833,"la":-18.7527,"lo":-44.4303,"e":1,"i":1},{"n":"João Monlevade","p":82301,"la":-19.8126,"lo":-43.1735,"e":1,"i":1},{"n":"Alfenas","p":81171,"la":-21.4256,"lo":-45.9477,"e":1,"i":1},{"n":"Viçosa","p":78633,"la":-20.7559,"lo":-42.8742,"e":1,"i":1},{"n":"Três Corações","p":77667,"la":-21.6921,"lo":-45.2511,"e":1,"i":1},{"n":"Ouro Preto","p":77019,"la":-20.3796,"lo":-43.512,"e":1,"i":1},{"n":"Lagoa Santa","p":75830,"la":-19.6397,"lo":-43.8932,"e":1,"i":1},{"n":"São Sebastião do Paraíso","p":73593,"la":-20.9167,"lo":-46.9837,"e":1,"i":1},{"n":"Janaúba","p":72606,"la":-15.8022,"lo":-43.3132,"e":1,"i":1},{"n":"Formiga","p":70188,"la":-20.4618,"lo":-45.4268,"e":1,"i":1},{"n":"Cataguases","p":68474,"la":-21.3924,"lo":-42.6896,"e":1,"i":1},{"n":"Januária","p":67244,"la":-15.4802,"lo":-44.3639,"e":1,"i":1},{"n":"Pedro Leopoldo","p":64368,"la":-19.6308,"lo":-44.0383,"e":1,"i":0},{"n":"Mariana","p":62937,"la":-20.3765,"lo":-43.414,"e":1,"i":1},{"n":"Frutal","p":60039,"la":-20.0259,"lo":-48.9355,"e":1,"i":1},{"n":"Ponte Nova","p":59558,"la":-20.4111,"lo":-42.8978,"e":1,"i":1},{"n":"Pirapora","p":57233,"la":-17.3392,"lo":-44.934,"e":1,"i":1},{"n":"Três Pontas","p":56906,"la":-21.3694,"lo":-45.5109,"e":1,"i":0},{"n":"Itabirito","p":54548,"la":-20.2501,"lo":-43.8038,"e":1,"i":0},{"n":"São Francisco","p":54466,"la":-15.9514,"lo":-44.8593,"e":1,"i":0},{"n":"Congonhas","p":54284,"la":-20.4958,"lo":-43.851,"e":1,"i":1},{"n":"Extrema","p":53882,"la":-22.854,"lo":-46.3178,"e":1,"i":1},{"n":"Campo Belo","p":53847,"la":-20.8932,"lo":-45.2699,"e":1,"i":1},{"n":"Bom Despacho","p":52922,"la":-19.7386,"lo":-45.2622,"e":1,"i":1},{"n":"Leopoldina","p":52764,"la":-21.5296,"lo":-42.6421,"e":1,"i":1},{"n":"Lagoa da Prata","p":52634,"la":-20.0237,"lo":-45.5401,"e":1,"i":0},{"n":"Guaxupé","p":52402,"la":-21.305,"lo":-46.7081,"e":1,"i":1},{"n":"Bocaiúva","p":49475,"la":-17.1135,"lo":-43.8104,"e":1,"i":1},{"n":"Diamantina","p":49138,"la":-18.2413,"lo":-43.6031,"e":1,"i":1},{"n":"Monte Carmelo","p":49073,"la":-18.7302,"lo":-47.4912,"e":1,"i":0},{"n":"João Pinheiro","p":48108,"la":-17.7398,"lo":-46.1715,"e":1,"i":1},{"n":"Igarapé","p":46487,"la":-20.0707,"lo":-44.2994,"e":1,"i":0},{"n":"São Lourenço","p":46183,"la":-22.1166,"lo":-45.0506,"e":1,"i":1},{"n":"Santana do Paraíso","p":45840,"la":-19.3661,"lo":-42.5446,"e":1,"i":0},{"n":"Santos Dumont","p":43998,"la":-21.4634,"lo":-43.5499,"e":1,"i":0},{"n":"Arcos","p":42535,"la":-20.2863,"lo":-45.5373,"e":1,"i":1},{"n":"Santa Rita do Sapucaí","p":41856,"la":-22.2461,"lo":-45.7034,"e":1,"i":0},{"n":"Almenara","p":41751,"la":-16.1785,"lo":-40.6942,"e":1,"i":1},{"n":"Andradas","p":41700,"la":-22.0695,"lo":-46.5724,"e":1,"i":1},{"n":"São Gotardo","p":41610,"la":-19.3087,"lo":-46.0465,"e":1,"i":0},{"n":"Salinas","p":41534,"la":-16.1753,"lo":-42.2964,"e":1,"i":1},{"n":"Boa Esperança","p":41105,"la":-21.0927,"lo":-45.5612,"e":1,"i":1},{"n":"Capelinha","p":40733,"la":-17.6888,"lo":-42.5147,"e":1,"i":1},{"n":"Oliveira","p":40616,"la":-20.6982,"lo":-44.829,"e":1,"i":1},{"n":"Visconde do Rio Branco","p":40361,"la":-21.0127,"lo":-42.8361,"e":1,"i":0},{"n":"Caeté","p":40264,"la":-19.8826,"lo":-43.6704,"e":1,"i":0},{"n":"Brumadinho","p":39985,"la":-20.151,"lo":-44.2007,"e":1,"i":0},{"n":"Ouro Branco","p":39851,"la":-20.5263,"lo":-43.6962,"e":1,"i":0},{"n":"Iturama","p":39349,"la":-19.7276,"lo":-50.1966,"e":1,"i":1},{"n":"Machado","p":38981,"la":-21.6778,"lo":-45.9219,"e":1,"i":1},{"n":"Matozinhos","p":38753,"la":-19.5543,"lo":-44.0868,"e":1,"i":0},{"n":"Porteirinha","p":38730,"la":-15.7404,"lo":-43.0281,"e":1,"i":0},{"n":"Jaíba","p":38656,"la":-15.3432,"lo":-43.6688,"e":1,"i":0},{"n":"Mateus Leme","p":38377,"la":-19.9794,"lo":-44.4318,"e":1,"i":0},{"n":"Sarzedo","p":37262,"la":-20.0367,"lo":-44.1446,"e":1,"i":0},{"n":"Piumhi","p":37020,"la":-20.4762,"lo":-45.9589,"e":1,"i":1},{"n":"Nanuque","p":36456,"la":-17.8481,"lo":-40.3533,"e":1,"i":0},{"n":"Araçuaí","p":35644,"la":-16.8523,"lo":-42.0637,"e":1,"i":1},{"n":"São Joaquim de Bicas","p":35007,"la":-20.048,"lo":-44.2749,"e":1,"i":0},{"n":"Várzea da Palma","p":34958,"la":-17.5944,"lo":-44.7226,"e":1,"i":0},{"n":"Itamarandiba","p":34094,"la":-17.8552,"lo":-42.8561,"e":1,"i":0},{"n":"Taiobeiras","p":34061,"la":-15.8106,"lo":-42.2259,"e":1,"i":0},{"n":"Guanhães","p":33271,"la":-18.7713,"lo":-42.9312,"e":1,"i":1},{"n":"Ouro Fino","p":33140,"la":-22.2779,"lo":-46.3716,"e":1,"i":0},{"n":"Brasília de Minas","p":33102,"la":-16.2104,"lo":-44.4299,"e":1,"i":0},{"n":"Carangola","p":32302,"la":-20.7343,"lo":-42.0313,"e":1,"i":0},{"n":"Pompéu","p":31978,"la":-19.2257,"lo":-45.0141,"e":1,"i":0},{"n":"Além Paraíba","p":31844,"la":-21.8797,"lo":-42.7176,"e":1,"i":1},{"n":"Barão de Cocais","p":31732,"la":-19.9389,"lo":-43.4755,"e":1,"i":0},{"n":"Espinosa","p":31526,"la":-14.9249,"lo":-42.809,"e":1,"i":0},{"n":"Santa Bárbara","p":31413,"la":-19.9604,"lo":-43.4101,"e":1,"i":0},{"n":"Juatuba","p":31151,"la":-19.9448,"lo":-44.3451,"e":1,"i":1},{"n":"Cláudio","p":30875,"la":-20.4437,"lo":-44.7673,"e":1,"i":0},{"n":"Cambuí","p":30328,"la":-22.6115,"lo":-46.0572,"e":1,"i":0},{"n":"Carmo do Paranaíba","p":30074,"la":-18.991,"lo":-46.3167,"e":1,"i":0},{"n":"Três Marias","p":29908,"la":-18.2048,"lo":-45.2473,"e":0,"i":1},{"n":"Sacramento","p":27400,"la":-19.8622,"lo":-47.4508,"e":0,"i":1},{"n":"Tupaciguara","p":26250,"la":-18.5866,"lo":-48.6985,"e":0,"i":1},{"n":"Francisco Sá","p":24092,"la":-16.4827,"lo":-43.4896,"e":0,"i":1},{"n":"Itaobim","p":19701,"la":-16.5571,"lo":-41.5017,"e":0,"i":1},{"n":"Resplendor","p":17639,"la":-19.3194,"lo":-41.2462,"e":0,"i":1},{"n":"São João Evangelista","p":15681,"la":-18.548,"lo":-42.7655,"e":0,"i":1},{"n":"Campos Altos","p":13296,"la":-19.6914,"lo":-46.1725,"e":0,"i":1},{"n":"São Gonçalo do Rio Abaixo","p":12006,"la":-19.8221,"lo":-43.366,"e":0,"i":1},{"n":"Nova União","p":6038,"la":-19.6876,"lo":-43.583,"e":0,"i":1}];
+
+var P_POP = 0.7532, P_ISOL = 0.2468;
+var POP_TOTAL = M.reduce(function (s, m) { return s + m.p; }, 0);
+var N_ELEG = M.length;
+var inicial = M.map(function (m) { return m.i === 1; });
+var estado = inicial.slice();
+var BASE = null;
+var filtro = 'todos';
+
+function haversine(a, b) {
+  var R = 6371, rad = Math.PI / 180;
+  var p1 = a.la * rad, p2 = b.la * rad;
+  var dp = (b.la - a.la) * rad, dl = (b.lo - a.lo) * rad;
+  var x = Math.sin(dp / 2) * Math.sin(dp / 2) +
+          Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(x)));
+}
+
+function calcula(est) {
+  var hosts = [];
+  for (var i = 0; i < M.length; i++) if (est[i]) hosts.push(i);
+
+  var isol = new Array(M.length).fill(null);
+  for (var i = 0; i < M.length; i++) {
+    var melhor = null;
+    for (var k = 0; k < hosts.length; k++) {
+      var j = hosts[k];
+      if (j === i) continue;
+      var d = haversine(M[i], M[j]);
+      if (melhor === null || d < melhor) melhor = d;
+    }
+    isol[i] = melhor;
+  }
+
+  var isolTotal = 0;
+  for (var i = 0; i < M.length; i++) if (isol[i] !== null) isolTotal += isol[i];
+
+  var pesoPop = [], pesoIsol = [], valor = [];
+  for (var i = 0; i < M.length; i++) {
+    pesoPop[i] = M[i].p / POP_TOTAL;
+    pesoIsol[i] = isolTotal > 0 && isol[i] !== null ? isol[i] / isolTotal : 0;
+    valor[i] = P_POP * pesoPop[i] + P_ISOL * pesoIsol[i];
+  }
+
+  var siPop = 0, siIsol = 0, icap = 0, elegCom = 0;
+  for (var k = 0; k < hosts.length; k++) {
+    var j = hosts[k];
+    siPop += pesoPop[j];
+    siIsol += pesoIsol[j];
+    icap += valor[j];
+    elegCom++;
+  }
+
+  return {
+    isol: isol, valor: valor, icap: icap, siPop: siPop, siIsol: siIsol,
+    nHosts: hosts.length, elegCom: elegCom, icapVelho: elegCom / N_ELEG
+  };
+}
+
+function num(v, casas) {
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
+}
+
+function pct(v) { return num(v * 100, 2) + '%'; }
+
+function classeDelta(d) { return Math.abs(d) < 1e-9 ? 'igual' : (d > 0 ? 'sobe' : 'desce'); }
+
+function textoDelta(dpp) {
+  if (Math.abs(dpp) < 1e-9) return 'situação real de hoje';
+  var sinal = dpp > 0 ? '▲ +' : '▼ ';
+  return sinal + num(dpp, 2) + ' p.p. vs. hoje';
+}
+
+function alterado() {
+  for (var i = 0; i < estado.length; i++) if (estado[i] !== inicial[i]) return true;
+  return false;
+}
+
+var elRolagem = document.getElementById('rolagem');
+var elVazio = document.getElementById('vazio');
+var elBusca = document.getElementById('busca');
+var elAcao = document.getElementById('acao');
+
+var LINHAS = [];
+var ordem = { col: 'pop', dir: -1 };
+var ULTIMO = null;
+
+function chaveOrd(i, r) {
+  if (ordem.col === 'nome') return M[i].n;
+  if (ordem.col === 'pop') return M[i].p;
+  if (ordem.col === 'isol') return r.isol[i] === null ? -1 : r.isol[i];
+  return r.valor[i];
+}
+
+function montaLista() {
+  var frag = document.createDocumentFragment();
+  M.forEach(function (m, i) {
+    var div = document.createElement('div');
+    div.className = 'linha';
+    div.dataset.i = i;
+    div.dataset.nome = m.n.toLowerCase();
+    div.innerHTML =
+      '<span class="chk"><input type="checkbox" id="c' + i + '" aria-label="Fração em ' + m.n + '"></span>' +
+      '<span class="nome"><label for="c' + i + '">' + m.n + '</label></span>' +
+      '<span>' + m.p.toLocaleString('pt-BR') + '</span>' +
+      '<span class="isol"></span>' +
+      '<span class="valor"></span>';
+    LINHAS[i] = div;
+    frag.appendChild(div);
+  });
+  elRolagem.appendChild(frag);
+  elRolagem.addEventListener('change', function (ev) {
+    if (ev.target.type !== 'checkbox') return;
+    var i = +ev.target.closest('.linha').dataset.i;
+    estado[i] = ev.target.checked;
+    atualiza(i);
+  });
+}
+
+function ordenaLista(r) {
+  var idx = M.map(function (_, i) { return i; });
+  idx.sort(function (a, b) {
+    var ka = chaveOrd(a, r), kb = chaveOrd(b, r), c;
+    c = typeof ka === 'string' ? ka.localeCompare(kb, 'pt-BR') : (ka - kb);
+    if (c === 0) return M[a].n.localeCompare(M[b].n, 'pt-BR');
+    return c * ordem.dir;
+  });
+  var frag = document.createDocumentFragment();
+  idx.forEach(function (i) { frag.appendChild(LINHAS[i]); });
+  elRolagem.appendChild(frag);
+
+  document.querySelectorAll('.cab .ord').forEach(function (b) {
+    if (b.dataset.c === ordem.col) {
+      b.setAttribute('aria-sort', ordem.dir === 1 ? 'ascending' : 'descending');
+      b.querySelector('.seta').textContent = ordem.dir === 1 ? '▲' : '▼';
+    } else {
+      b.removeAttribute('aria-sort');
+      b.querySelector('.seta').textContent = '';
+    }
+  });
+}
+
+function semAcento(t) {
+  return t.normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+function aplicaFiltro() {
+  var termo = semAcento(elBusca.value.trim().toLowerCase());
+  var vis = 0;
+  elRolagem.querySelectorAll('.linha').forEach(function (l) {
+    var i = +l.dataset.i;
+    var okTexto = !termo || semAcento(l.dataset.nome).indexOf(termo) !== -1;
+    var okFiltro = filtro === 'todos' || (filtro === 'com' ? estado[i] : !estado[i]);
+    var mostra = okTexto && okFiltro;
+    l.hidden = !mostra;
+    l.classList.toggle('par', mostra && vis % 2 === 1);
+    if (mostra) vis++;
+  });
+  elVazio.hidden = vis !== 0;
+}
+
+function atualiza(mexido) {
+  var r = calcula(estado);
+  if (BASE === null) BASE = r;
+
+  document.getElementById('icapNovo').textContent = pct(r.icap);
+  document.getElementById('siPop').textContent = pct(r.siPop);
+  document.getElementById('siIsol').textContent = pct(r.siIsol);
+  document.getElementById('icapVelho').textContent = pct(r.icapVelho);
+  document.getElementById('notaVelho').textContent =
+    r.elegCom + ' de ' + N_ELEG + ' municípios atendidos';
+
+  var dNovo = (r.icap - BASE.icap) * 100;
+  var elDN = document.getElementById('deltaNovo');
+  elDN.textContent = textoDelta(dNovo);
+  elDN.className = 'delta ' + classeDelta(dNovo);
+
+  var dVelho = (r.icapVelho - BASE.icapVelho) * 100;
+  var elDV = document.getElementById('deltaVelho');
+  elDV.textContent = textoDelta(dVelho);
+  elDV.className = 'delta ' + classeDelta(dVelho);
+
+  M.forEach(function (m, i) {
+    var l = elRolagem.querySelector('.linha[data-i="' + i + '"]');
+    l.classList.toggle('on', estado[i]);
+    l.classList.toggle('off', !estado[i]);
+    l.querySelector('input').checked = estado[i];
+    l.querySelector('.isol').textContent = r.isol[i] === null ? '—' : num(r.isol[i], 1) + ' km';
+    l.querySelector('.valor').textContent = num(r.valor[i] * 100, 3) + '%';
+  });
+
+  document.getElementById('contador').textContent =
+    r.nHosts + ' de 130 municípios com fração' + (alterado() ? ' (simulado)' : '');
+
+  if (mexido === null) {
+    elAcao.innerHTML = 'Nenhuma alteração simulada. O painel mostra a situação real.';
+  } else {
+    var m = M[mexido];
+    var acao = estado[mexido] ? 'instalada' : 'retirada';
+    var pp = (r.icap - (window.__antes !== undefined ? window.__antes : r.icap)) * 100;
+    var vizinhos = 0;
+    if (window.__isolAntes) {
+      for (var i = 0; i < M.length; i++) {
+        if (i === mexido) continue;
+        var a = window.__isolAntes[i], b = r.isol[i];
+        if (a === null || b === null ? a !== b : Math.abs(a - b) > 0.05) vizinhos++;
+      }
+    }
+    elAcao.innerHTML =
+      '<span><b>' + m.n + '</b> — fração ' + acao + ' · Icap ' +
+      '<b class="' + classeDelta(pp) + '">' + (pp > 0 ? '+' : '') + num(pp, 2) + ' p.p.</b>' +
+      (vizinhos ? ' · isolamento recalculado em <b>' + vizinhos + '</b> município' + (vizinhos > 1 ? 's' : '') + ' vizinho' + (vizinhos > 1 ? 's' : '') : '') +
+      (r.nHosts <= 1 ? ' · <b>atenção:</b> com uma fração ou menos, a dimensão isolamento perde sentido' : '') +
+      '</span>';
+    elAcao.classList.remove('pulso');
+    void elAcao.offsetWidth;
+    elAcao.classList.add('pulso');
+  }
+
+  window.__antes = r.icap;
+  window.__isolAntes = r.isol.slice();
+  ULTIMO = r;
+  ordenaLista(r);
+  aplicaFiltro();
+}
+
+document.querySelectorAll('.cab .ord').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var c = b.dataset.c;
+    if (ordem.col === c) {
+      ordem.dir = -ordem.dir;
+    } else {
+      ordem.col = c;
+      ordem.dir = c === 'nome' ? 1 : -1;
+    }
+    if (ULTIMO) { ordenaLista(ULTIMO); aplicaFiltro(); }
+  });
+});
+
+document.querySelectorAll('.filtro').forEach(function (b) {
+  b.addEventListener('click', function () {
+    filtro = b.dataset.f;
+    document.querySelectorAll('.filtro').forEach(function (o) {
+      o.setAttribute('aria-pressed', String(o === b));
+    });
+    aplicaFiltro();
+  });
+});
+
+elBusca.addEventListener('input', aplicaFiltro);
+
+document.getElementById('reset').addEventListener('click', function () {
+  estado = inicial.slice();
+  window.__antes = undefined;
+  window.__isolAntes = null;
+  atualiza(null);
+});
+
+montaLista();
+atualiza(null);
+</script>
+</body>
+</html>
